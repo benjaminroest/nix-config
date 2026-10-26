@@ -9,6 +9,7 @@
       orionConfiguration
       systemTheme
       core
+      audio
       git
       zen-browser
       upower
