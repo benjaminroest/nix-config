@@ -25,6 +25,9 @@
       };
     in inputs.wrappers.wrappers.alacritty.wrap {
       inherit pkgs;
+      runtimePkgs = with pkgs; [
+        wl-clipboard
+      ];
       settings = {
         env = {
           "FONTCONFIG_FILE" = "${fontsConf}";
