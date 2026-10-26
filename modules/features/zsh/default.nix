@@ -1,0 +1,101 @@
+{
+  inputs,
+  moduleWithSystem,
+  ...
+}: {
+  flake.nixosModules.zsh = moduleWithSystem ({
+    pkgs,
+    self',
+    ...
+  }: {
+    nixpkgs.overlays = [
+      (final: prev: {
+        zsh = self'.packages.zsh;
+      })
+    ];
+    programs.zsh = {
+      enable = true;
+      enableCompletion = true;
+      enableBashCompletion = true;
+      autosuggestions.enable = true;
+      syntaxHighlighting.enable = true;
+      histSize = 10000;
+    };
+    users.defaultUserShell = pkgs.zsh;
+  });
+  perSystem = {
+    pkgs,
+    self',
+    lib,
+    ...
+  }: {
+    packages = {
+      zsh = let
+        flakeLocation = builtins.getEnv "PWD";
+      in 
+        lib.warnIf (flakeLocation == "") "Flake Location is undefined. Are you building in the right directory?"
+        inputs.wrappers.wrappers.zsh.wrap {
+          inherit pkgs;
+          runtimePkgs = [pkgs.carapace pkgs.fzf pkgs.starship];
+          zshAliases = {
+            ls = "${lib.getExe pkgs.lsd} -l";
+            v = lib.getExe self'.packages.nvim;
+            vim = lib.getExe self'.packages.nvim;
+            cat = lib.getExe pkgs.bat;
+            lg = lib.getExe pkgs.lazygit;
+            man = "man -P \"${lib.getExe pkgs.bat} -p\"";
+            nsh = "nix-shell -p";
+            nrs =
+              if flakeLocation != ""
+                then "( cd ${flakeLocation} && sudo nixos-rebuild switch --impure --flake . )"
+              else "echo 'Flake location not specified. Did you build with --impure?'";
+            vinix =
+              if flakeLocation != ""
+                then "nvim --cmd 'cd ${flakeLocation}'"
+              else "echo 'Flake location not specified. Did you build with --impure?'";
+          };
+          zshrc.content = ''
+          eval "$(starship init zsh)"
+
+          if (( ''${+terminfo[smkx]} )) && (( ''${+terminfo[rmkx]} )); then
+            function zle-line-init() { echoti smkx }
+          function zle-line-finish() { echoti rmkx }
+          zle -N zle-line-init
+            zle -N zle-line-finish
+            fi
+
+            autoload -U compinit && compinit
+            export CARAPACE_BRIDGES='zsh,fish,bash,inshellisense' # optional
+            zstyle ':completion:*' format $'\e[2;37mCompleting %d\e[m'
+            source <(${lib.getExe pkgs.carapace} _carapace)
+            zstyle ':completion:*' matcher-list 'm:{[:lower:]}={[:upper:]}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
+
+            autoload -U select-word-style
+            select-word-style bash
+
+            autoload -U up-line-or-beginning-search down-line-or-beginning-search
+            zle -N up-line-or-beginning-search
+            zle -N down-line-or-beginning-search
+            bindkey "^[OA" up-line-or-beginning-search
+            bindkey "^[OB" down-line-or-beginning-search
+
+            bindkey "^[[1;5C" forward-word
+            bindkey "^[[1;5D" backward-word
+            bindkey "^[[3;5~" kill-word
+            bindkey "^H" backward-kill-word
+
+            source <(${lib.getExe pkgs.fzf} --zsh)
+
+            setopt NO_CASE_GLOB
+
+            if command -v ${lib.getExe pkgs.nix-your-shell} > /dev/null; then
+              ${lib.getExe pkgs.nix-your-shell} -- zsh | source /dev/stdin
+                fi
+
+                export EDITOR=nvim
+                '';
+      };
+    };
+  };
+}
+
