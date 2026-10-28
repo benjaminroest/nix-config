@@ -36,12 +36,21 @@
         lib.warnIf (flakeLocation == "") "Flake Location is undefined. Are you building in the right directory?"
         inputs.wrappers.wrappers.zsh.wrap {
           inherit pkgs;
-          runtimePkgs = [pkgs.carapace pkgs.fzf pkgs.starship];
+          runtimePkgs = [
+            pkgs.fzf 
+            pkgs.starship
+            pkgs.fd
+            pkgs.lazygit
+
+            pkgs.zsh-autosuggestions
+            pkgs.zsh-history-substring-search
+            pkgs.zsh-vi-mode
+            pkgs.zsh-fast-syntax-highlighting
+          ];
           zshAliases = {
-            ls = "${lib.getExe pkgs.lsd} -l";
-            v = lib.getExe self'.packages.nvim;
-            vim = lib.getExe self'.packages.nvim;
-            cat = lib.getExe pkgs.bat;
+            ls = "${lib.getExe pkgs.lsd}";
+            ll = "${lib.getExe pkgs.lsd} -l";
+            la = "${lib.getExe pkgs.lsd} -la";
             lg = lib.getExe pkgs.lazygit;
             man = "man -P \"${lib.getExe pkgs.bat} -p\"";
             nsh = "nix-shell -p";
@@ -55,45 +64,37 @@
               else "echo 'Flake location not specified. Did you build with --impure?'";
           };
           zshrc.content = ''
-          eval "$(starship init zsh)"
-
-          if (( ''${+terminfo[smkx]} )) && (( ''${+terminfo[rmkx]} )); then
-            function zle-line-init() { echoti smkx }
-          function zle-line-finish() { echoti rmkx }
-          zle -N zle-line-init
-            zle -N zle-line-finish
+            if command -v nvim >/dev/null 2>&1; then
+              alias v="nvim"
+              alias vim="nvim"
             fi
 
-            autoload -U compinit && compinit
-            export CARAPACE_BRIDGES='zsh,fish,bash,inshellisense' # optional
-            zstyle ':completion:*' format $'\e[2;37mCompleting %d\e[m'
-            source <(${lib.getExe pkgs.carapace} _carapace)
-            zstyle ':completion:*' matcher-list 'm:{[:lower:]}={[:upper:]}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
+            export STARSHIP_CONFIG="${./starship.toml}"
+            eval "$(${lib.getExe pkgs.starship} init zsh)"
+            
 
-            autoload -U select-word-style
-            select-word-style bash
+            source "${./defaults.zsh}"
+            source "${./completion.zsh}"
+            source "${./fzf.zsh}"
+            source "${./git.zsh}"
+            source "${./bindings.zsh}"
 
-            autoload -U up-line-or-beginning-search down-line-or-beginning-search
-            zle -N up-line-or-beginning-search
-            zle -N down-line-or-beginning-search
-            bindkey "^[OA" up-line-or-beginning-search
-            bindkey "^[OB" down-line-or-beginning-search
+            # Always start each new prompt in insert mode
+            ZVM_LINE_INIT_MODE=i
 
-            bindkey "^[[1;5C" forward-word
-            bindkey "^[[1;5D" backward-word
-            bindkey "^[[3;5~" kill-word
-            bindkey "^H" backward-kill-word
+            # Plugins
+            source ${pkgs.zsh-vi-mode}/share/zsh-vi-mode/zsh-vi-mode.plugin.zsh
+            source ${pkgs.zsh-autosuggestions}/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+            source ${pkgs.zsh-history-substring-search}/share/zsh-history-substring-search/zsh-history-substring-search.zsh
+            source ${pkgs.zsh-fast-syntax-highlighting}/share/zsh/plugins/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh
 
             source <(${lib.getExe pkgs.fzf} --zsh)
 
-            setopt NO_CASE_GLOB
-
-            if command -v ${lib.getExe pkgs.nix-your-shell} > /dev/null; then
-              ${lib.getExe pkgs.nix-your-shell} -- zsh | source /dev/stdin
-                fi
-
-                export EDITOR=nvim
-                '';
+            # Load machine-specific configuration if present
+            if [[ -f "$HOME/.config/zsh/local.zsh" ]]; then
+              source "$HOME/.config/zsh/local.zsh"
+            fi
+            '';
       };
     };
   };

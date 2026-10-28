@@ -1,0 +1,10 @@
+# Load completion system
+autoload -Uz compinit
+compinit
+
+# Enable interactive completion menu selection
+zstyle ':completion:*' menu select
+
+# Make completion case-insensitive
+# Example: "doc" can complete to "Documents"
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'  # lowercase input matches upper and lower
