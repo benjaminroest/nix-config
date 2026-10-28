@@ -64,6 +64,11 @@
               else "echo 'Flake location not specified. Did you build with --impure?'";
           };
           zshrc.content = ''
+            # Load machine-specific configuration if present
+            if [[ -f "$HOME/.config/zsh/local.zsh" ]]; then
+              source "$HOME/.config/zsh/local.zsh"
+            fi
+
             if command -v nvim >/dev/null 2>&1; then
               alias v="nvim"
               alias vim="nvim"
@@ -89,11 +94,6 @@
             source ${pkgs.zsh-fast-syntax-highlighting}/share/zsh/plugins/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh
 
             source <(${lib.getExe pkgs.fzf} --zsh)
-
-            # Load machine-specific configuration if present
-            if [[ -f "$HOME/.config/zsh/local.zsh" ]]; then
-              source "$HOME/.config/zsh/local.zsh"
-            fi
             '';
       };
     };
